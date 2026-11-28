@@ -1,11 +1,14 @@
 const canvas = document.getElementById("game");
 //get ctx - pen to draw with
 const ctx = canvas.getContext("2d");
-
+const darkCanvas = document.createElement("canvas");
+darkCanvas.width = canvas.width;
+darkCanvas.height = canvas.height;
+const dctx = darkCanvas.getContext("2d");
 // change difficulty in the numbers
 const WALK_SPEED = 150;        // pixels per second
 const WARMTH_DRAIN = 0.6;      // warmth lost per second
-const SECONDS_PER_MINUTE = 4;  // real seconds per game minute
+const SECONDS_PER_MINUTE = 0.5;  // real seconds per game minute
 
 const player = { x: 40, y: 40, vx: 0, vy: 0 };
 const cam = { x: 0, y: 0 };
@@ -84,18 +87,57 @@ function drawHUD() {
   ctx.fillText("Helped " + state.helped + "/6", 420, 17);
   ctx.fillText("Facts " + state.facts + "/8", 530, 17);
 }
+function drawLighting() {
+  const dark = Math.min(0.8, 1 - state.visibility / 100);
+  if (dark <= 0) return;
+
+  // fill  dark layer
+  dctx.globalCompositeOperation = "source-over";
+  dctx.clearRect(0, 0, darkCanvas.width, darkCanvas.height);
+  dctx.fillStyle = `rgba(10, 10, 30, ${dark})`;
+  dctx.fillRect(0, 0, darkCanvas.width, darkCanvas.height);
+
+  // cut holes 
+  dctx.globalCompositeOperation = "destination-out";
+  function hole(x, y, r) {
+    const g = dctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, "rgba(0,0,0,1)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    dctx.fillStyle = g;
+    dctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  for (const L of lights) {
+    hole(L.x * TILE + TILE / 2 - cam.x, L.y * TILE + TILE / 2 - cam.y, L.r);
+  }
+  hole(player.x - cam.x, player.y - cam.y, 60);
+
+  ctx.drawImage(darkCanvas, 0, 0);
+
+  // warm glow  top
+  ctx.globalCompositeOperation = "lighter";
+  for (const L of lights) {
+    const x = L.x * TILE + TILE / 2 - cam.x;
+    const y = L.y * TILE + TILE / 2 - cam.y;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, L.r);
+    g.addColorStop(0, `rgba(255, 170, 80, ${dark * 0.35})`);
+    g.addColorStop(1, "rgba(255, 170, 80, 0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(x - L.r, y - L.r, L.r * 2, L.r * 2);
+  }
+  ctx.globalCompositeOperation = "source-over";
+}
 
 let last = performance.now();
+
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   update(dt);
   draw();
-  const dark = Math.min(0.7, state.minutes / 75 * 0.7);
-  ctx.fillStyle = "rgba(30, 20, 50, " + dark + ")";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  drawLighting();
   drawHUD();
+
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

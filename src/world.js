@@ -45,3 +45,11 @@ paint(2, 18, 26, 5, 1);
 
 //  Harvest Center 
 paint(5, 50, 30, 8, 8);
+// street lights   
+const lights = [
+  { x: 5,  y: 6,  r: 90 },
+  { x: 15, y: 6,  r: 90 },
+  { x: 36, y: 18, r: 90 },
+  { x: 8,  y: 34, r: 90 },
+  { x: 54, y: 29, r: 140 }
+];
